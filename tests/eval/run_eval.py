@@ -1,4 +1,4 @@
-"""Real-model eval over the 13 labelled invoices. Usage: python -m tests.eval.run_eval [--repeats N] [--model M]"""
+"""Real-model eval over the 25 labelled invoices. Usage: python -m tests.eval.run_eval [--repeats N] [--model M]"""
 
 from __future__ import annotations
 
