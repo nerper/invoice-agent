@@ -1,0 +1,16 @@
+workspace_dir: workspace
+approval_limit_php: 100000
+price_tolerance_pct: 1.0
+qty_tolerance: 0
+max_steps_per_invoice: 8
+max_cost_usd_per_invoice: 0.02
+max_cost_usd_per_run: 0.50
+temperature: 0
+llm_timeout_s: 60
+llm_max_retries: 2
+fallback_usd_per_mtok_in: 1.0
+fallback_usd_per_mtok_out: 4.0
+watch_interval_s: 2
+ui:
+  host: 127.0.0.1
+  port: 8765

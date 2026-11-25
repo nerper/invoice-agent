@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/">← Workspace</a></p>
+<h1 class="mono">{{ r.file_name }}</h1>
+<div class="split">
+  <div class="pane"><iframe src="/files/{{ r.fingerprint[:12] }}" title="Invoice PDF"></iframe></div>
+  <div class="pane">
+    <dl>
+      <dt>Decision</dt><dd><span class="tag {{ r.decision }}">{{ (r.decision or r.status).replace('_',' ') }}</span>
+        {% if r.decided_by == 'guardrail' %}<span class="tag guard">GUARDRAIL</span>{% endif %}</dd>
+      <dt>Decided by</dt><dd>{{ r.decided_by or '-' }}</dd>
+      <dt>Vendor</dt><dd>{{ r.vendor_name or '-' }}</dd>
+      <dt>Invoice no.</dt><dd class="mono">{{ r.invoice_number or '-' }}</dd>
+      <dt>PO</dt><dd class="mono">{{ r.po_number or '-' }}</dd>
+      <dt>Total</dt><dd class="mono">{{ r.total_centavos|peso or '-' }}</dd>
+      <dt>Steps / cost</dt><dd class="mono">{{ r.steps }} steps · ${{ '%.4f'|format(r.cost_usd) }} · {{ r.model or '' }}</dd>
+      <dt>Reason</dt><dd>{{ r.reason or '-' }}</dd>
+    </dl>
+    <h2>Findings</h2>
+    {% if findings %}
+    <table><thead><tr><th>Code</th><th>Severity</th><th>Detail</th></tr></thead><tbody>
+      {% for f in findings %}<tr><td class="mono">{{ f.code }}</td><td>{{ f.severity }}</td><td>{{ f.detail }}</td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p class="muted">No findings.</p>{% endif %}
+    <div class="actions">
+      {% if r.status == 'awaiting_human' %}
+      <button data-act="approve" data-fp="{{ r.fingerprint }}">Approve</button>
+      <button data-act="reject" data-fp="{{ r.fingerprint }}" class="alt">Reject</button>
+      {% endif %}
+      <button data-act="reveal" data-fp="{{ r.fingerprint }}" class="alt">Open in folder</button>
+      <a class="btn" href="/files/{{ r.fingerprint[:12] }}" target="_blank">Open PDF</a>
+      <span id="msg" class="mono"></span>
+    </div>
+  </div>
+</div>
+<h2>Timeline</h2>
+<table><thead><tr><th>Time</th><th>Step</th><th>Event</th><th>Data</th></tr></thead><tbody>
+  {% for e in events %}<tr><td class="mono muted">{{ e.ts[11:23] }}</td><td class="mono">{{ e.step if e.step is not none else '' }}</td>
+    <td class="mono">{{ e.event }}</td><td class="mono small">{{ e.data|tojson|truncate(220) }}</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

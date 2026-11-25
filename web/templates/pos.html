@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Purchase orders</h1>
+{% for po in pos %}
+<section>
+  <h2 class="mono">{{ po.po_number }} <span class="tag {{ 'flagged' if po.status == 'closed' else 'approved' }}">{{ po.status }}</span></h2>
+  <p>{{ po.vendor_name }} · TIN <span class="mono">{{ po.vendor_tin }}</span> · <span class="mono">{{ po.po_date }}</span></p>
+  <table><thead><tr><th>#</th><th>SKU</th><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th></tr></thead><tbody>
+  {% for l in po.lines %}<tr><td class="mono">{{ l.line_no }}</td><td class="mono">{{ l.sku }}</td><td>{{ l.description }}</td>
+    <td class="num mono">{{ l.qty }}</td><td class="num mono">{{ l.unit_price_centavos|peso }}</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endfor %}
+{% endblock %}

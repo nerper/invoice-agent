@@ -1,0 +1,20 @@
+{
+  "name": "invoice-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Thin npm wrapper around the Python invoice agent",
+  "scripts": {
+    "setup": "/opt/homebrew/bin/python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp -n .env.example .env || true",
+    "seed": ".venv/bin/python scripts/seed_db.py",
+    "demo:reset": ".venv/bin/python scripts/reset_workspace.py --demo",
+    "agent": ".venv/bin/python -m agent.main run",
+    "agent:watch": ".venv/bin/python -m agent.main watch",
+    "status": ".venv/bin/python -m agent.main status",
+    "approve": ".venv/bin/python -m agent.main approve",
+    "reject": ".venv/bin/python -m agent.main reject",
+    "ui": ".venv/bin/python -m agent.main ui",
+    "test": ".venv/bin/pytest -m \"not eval\" -q",
+    "eval": ".venv/bin/python -m tests.eval.run_eval --repeats 3",
+    "make:invoices": ".venv/bin/python scripts/make_invoices.py"
+  }
+}

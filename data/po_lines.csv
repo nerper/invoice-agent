@@ -1,0 +1,7 @@
+po_number,line_no,sku,description,qty,unit_price_php
+PO-1001,1,PAP-A4-500,A4 bond paper 500s,40,245.00
+PO-1002,1,LAP-14-I5,14in laptop i5 16GB,2,48500.00
+PO-1003,1,PRT-BRC-100,Printed brochures 100pc,10,1200.00
+PO-1004,1,BRG-6204,Ball bearing 6204,100,85.50
+PO-1004,2,BLT-V-A42,V-belt A42,30,310.00
+PO-1005,1,CLN-MOP-HD,Heavy duty mop,25,180.00

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="counts" id="counts">
+  {% for key, label in labels %}
+  <div class="count"><span class="mono n" data-count="{{ key }}">{{ counts[key] }}</span><span>{{ label }}</span></div>
+  {% endfor %}
+</section>
+<section class="actions">
+  <button id="run-btn" {% if running %}disabled{% endif %}>Run agent</button>
+  <label class="toggle"><input type="checkbox" id="watch-toggle" {% if watch %}checked{% endif %}> Watch inbox</label>
+  <label class="btn">Upload PDF<input type="file" id="upload" accept="application/pdf" hidden></label>
+  <span id="running-line" class="mono muted">{% if running %}Running…{% endif %}</span>
+  <span id="msg" class="mono"></span>
+</section>
+{% for key, label in labels %}
+<section>
+  <h2>{{ label }} <span class="mono muted">{{ groups[key]|length }}</span></h2>
+  {% if groups[key] %}
+  <table>
+    <thead><tr><th>File</th><th>Vendor</th><th>Invoice</th><th class="num">Total</th><th>Decision</th><th>Reason</th><th>Time</th></tr></thead>
+    <tbody>
+    {% for r in groups[key] %}
+      {% if key == 'inbox' %}
+      <tr><td class="mono">{{ r.file_name }}</td><td colspan="6" class="muted">waiting</td></tr>
+      {% else %}
+      <tr>
+        <td class="mono"><a href="/invoice/{{ r.fingerprint[:12] }}">{{ r.file_name }}</a></td>
+        <td>{{ r.vendor_name or '' }}</td>
+        <td class="mono">{{ r.invoice_number or '' }}</td>
+        <td class="num mono">{{ r.total_centavos|peso }}</td>
+        <td>{% if r.decision %}<span class="tag {{ r.decision }}">{{ r.decision.replace('_',' ') }}</span>{% endif %}
+            {% if r.decided_by == 'guardrail' %}<span class="tag guard">GUARDRAIL</span>{% endif %}</td>
+        <td class="reason">{{ (r.reason or '')[:110] }}</td>
+        <td class="mono muted">{{ (r.decided_at or r.created_at or '')[:19].replace('T',' ') }}</td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted empty">Empty</p>{% endif %}
+</section>
+{% endfor %}
+{% endblock %}
