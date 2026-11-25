@@ -12,6 +12,14 @@ npm run ui             # web UI at http://127.0.0.1:8765
 npm run agent          # in a second terminal: process the inbox with live step output
 ```
 
+## Run from any folder (optional)
+
+```bash
+npm run install:shortcut     # adds an `invoice-agent` command to ~/.zshrc (or ~/.bashrc)
+```
+
+Open a new terminal, then from anywhere: `invoice-agent ui`, `invoice-agent`, `invoice-agent status`, `invoice-agent approve <id>`. Remove it with `npm run uninstall:shortcut`. If you move the project folder, run `npm run install:shortcut` again.
+
 ## npm commands
 
 | Command | What it does |
@@ -27,6 +35,8 @@ npm run agent          # in a second terminal: process the inbox with live step 
 | `npm run test` | Offline tests (scripted fake LLM, no network) |
 | `npm run eval` | Real-model eval on 13 labelled invoices, writes `eval_report.md` |
 | `npm run make:invoices` | Re-render the fixture PDFs from `tests/fixtures/cases.yaml` |
+| `npm run install:shortcut` | Adds the `invoice-agent` command to your shell so you can run the agent from any folder |
+| `npm run uninstall:shortcut` | Removes that command from your shell config |
 
 The same commands run without npm, e.g. `.venv/bin/python -m agent.main run`.
 

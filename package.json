@@ -4,7 +4,7 @@
   "private": true,
   "description": "Thin npm wrapper around the Python invoice agent",
   "scripts": {
-    "setup": "/opt/homebrew/bin/python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp -n .env.example .env || true",
+    "setup": "/opt/homebrew/bin/python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp -n .env.example .env || true ; echo \"Optional: run npm run install:shortcut to use the invoice-agent command from any folder\"",
     "seed": ".venv/bin/python scripts/seed_db.py",
     "demo:reset": ".venv/bin/python scripts/reset_workspace.py --demo",
     "agent": ".venv/bin/python -m agent.main run",
@@ -15,6 +15,8 @@
     "ui": ".venv/bin/python -m agent.main ui",
     "test": ".venv/bin/pytest -m \"not eval\" -q",
     "eval": ".venv/bin/python -m tests.eval.run_eval --repeats 3",
-    "make:invoices": ".venv/bin/python scripts/make_invoices.py"
+    "make:invoices": ".venv/bin/python scripts/make_invoices.py",
+    "install:shortcut": "bash scripts/install_shortcut.sh",
+    "uninstall:shortcut": "bash scripts/install_shortcut.sh --remove"
   }
 }
