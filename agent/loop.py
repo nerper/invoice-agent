@@ -26,7 +26,9 @@ def _summarize(name: str, result: dict[str, Any]) -> dict[str, Any]:
     if name == "read_invoice" and result.get("ok"):
         out["text"] = result["text"][:300]
     elif name == "compare_to_po" and result.get("ok"):
-        out.update(all_match=result["all_match"], codes=[f["code"] for f in result["findings"]])
+        out.update(
+            all_match=result["all_match"], codes=[f["code"] for f in result["findings"]]
+        )
     elif name == "check_duplicate" and result.get("ok"):
         out["duplicate"] = result["duplicate"]
     elif name == "find_purchase_order":
@@ -39,6 +41,14 @@ def _summarize(name: str, result: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# THE TOOL-CALLING LOOP (one invoice). Each turn:
+#   1. send the conversation + tool list to the model         (llm.chat)
+#   2. the model replies with which tool to call next
+#   3. code runs that tool and appends the result to the chat (dispatch)
+#   4. repeat, so the model picks the next tool from the last result
+# It ends when submit_decision is accepted, or a step/cost limit forces a flag.
+# ---------------------------------------------------------------------------
 def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
     st: InvoiceState = ctx.state
     settings: Settings = ctx.settings
@@ -47,13 +57,17 @@ def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
         {"role": "user", "content": f"New invoice file: {st.file_name}. Process it."},
     ]
     schemas = tool_schemas()
+    # Hard cap on turns so a confused model can't loop forever (guardrail G5, see bottom).
     for step in range(1, settings.max_steps_per_invoice + 1):
         try:
             guardrails.check_cost(st, settings)
         except guardrails.CostLimitExceeded:
             log.log("guardrail", st.file_name, st.fingerprint, st.step, rule="G6")
-            return guardrails.force_flag("COST_LIMIT_REACHED", "Per-invoice cost limit reached.")
+            return guardrails.force_flag(
+                "COST_LIMIT_REACHED", "Per-invoice cost limit reached."
+            )
         st.step = step
+        # Ask the model what to do next.
         resp = llm.chat(messages, schemas)
         st.cost_usd += resp.cost_usd
         log.log(
@@ -89,6 +103,7 @@ def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
                 ],
             }
         )
+        # Run each tool the model asked for.
         for call in resp.tool_calls:
             log.log(
                 "tool_call",
@@ -98,6 +113,7 @@ def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
                 tool=call.name,
                 args=call.args_raw[:300],
             )
+            # Only the 5 whitelisted tools can run; anything else is rejected.
             if call.name not in ALLOWED_TOOLS:
                 result = err("unknown_tool", f"Tool '{call.name}' is not allowed")
             else:
@@ -107,7 +123,9 @@ def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
                         raise ValueError
                     result = dispatch(call.name, args, ctx)
                 except (json.JSONDecodeError, ValueError):
-                    result = err("invalid_arguments", "Arguments were not a valid JSON object")
+                    result = err(
+                        "invalid_arguments", "Arguments were not a valid JSON object"
+                    )
             log.log(
                 "tool_result",
                 st.file_name,
@@ -115,6 +133,7 @@ def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
                 step,
                 **_summarize(call.name, result),
             )
+            # Feed the tool result back so the model can choose the next tool from it.
             messages.append(
                 {
                     "role": "tool",
@@ -122,6 +141,7 @@ def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
                     "content": json.dumps(result, default=str),
                 }
             )
+            # submit_decision ends the loop; st.final already holds the guardrail-checked decision.
             if call.name == "submit_decision" and result.get("accepted") and st.final:
                 if st.final["overridden_by"]:
                     log.log(
@@ -133,5 +153,8 @@ def run_agent(llm: Any, ctx: ToolContext, log: ActionLog) -> dict[str, Any]:
                         final=st.final["decision"],
                     )
                 return st.final
+    # Ran out of steps without a decision: code flags it for a human (G5).
     log.log("guardrail", st.file_name, st.fingerprint, st.step, rule="G5")
-    return guardrails.force_flag("STEP_LIMIT_REACHED", "Step limit reached before a decision was submitted.")
+    return guardrails.force_flag(
+        "STEP_LIMIT_REACHED", "Step limit reached before a decision was submitted."
+    )
