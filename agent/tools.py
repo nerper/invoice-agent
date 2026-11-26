@@ -18,6 +18,7 @@ MAX_TEXT = 12000
 
 
 @dataclass
+# State is written ONLY by tool code (never by the model). Guardrails trust this.
 class InvoiceState:
     """Everything the guardrails trust: results of tools, not claims of the model."""
 
@@ -81,6 +82,8 @@ class SubmitDecisionArgs(BaseModel):
 
 
 # ---- tool implementations -------------------------------------------------
+# TOOL 1 of 5 - read the PDF. Extracts text with pdfplumber; the MODEL then interprets
+# that text (any layout) into structured invoice fields.
 def read_invoice(_: ReadInvoiceArgs, ctx: ToolContext) -> dict[str, Any]:
     try:
         with pdfplumber.open(ctx.state.file_path) as pdf:
@@ -100,6 +103,7 @@ def read_invoice(_: ReadInvoiceArgs, ctx: ToolContext) -> dict[str, Any]:
     }
 
 
+# TOOL 2 of 5 - find the PO in SQLite (by PO number, or open POs for a vendor hint).
 def find_purchase_order(a: FindPOArgs, ctx: ToolContext) -> dict[str, Any]:
     if a.po_number:
         po = db.get_po(ctx.conn, a.po_number)
@@ -110,6 +114,7 @@ def find_purchase_order(a: FindPOArgs, ctx: ToolContext) -> dict[str, Any]:
     return err("not_found", msg, found=False, candidates=cands)
 
 
+# TOOL 3 of 5 - duplicate check against previously processed invoices in SQLite.
 def check_duplicate(a: CheckDuplicateArgs, ctx: ToolContext) -> dict[str, Any]:
     existing = db.find_existing(ctx.conn, a.vendor_name, a.invoice_number)
     ctx.state.duplicate_checked = True
@@ -120,6 +125,7 @@ def check_duplicate(a: CheckDuplicateArgs, ctx: ToolContext) -> dict[str, Any]:
     return {"ok": True, "duplicate": existing is not None, "existing": slim}
 
 
+# TOOL 4 of 5 - hands the invoice to agent/matching.py compare() (plain-code math).
 def compare_to_po(a: ComparePOArgs, ctx: ToolContext) -> dict[str, Any]:
     po = db.get_po(ctx.conn, a.po_number)
     if not po:
@@ -139,6 +145,8 @@ def compare_to_po(a: ComparePOArgs, ctx: ToolContext) -> dict[str, Any]:
     return {"ok": True, **res}
 
 
+# TOOL 5 of 5 - the model's ONLY way to finish. It does not move or write files;
+# it just proposes a decision, and guardrails.apply_decision() checks it first.
 def submit_decision(a: SubmitDecisionArgs, ctx: ToolContext) -> dict[str, Any]:
     from agent.guardrails import apply_decision
 
@@ -160,6 +168,7 @@ class Tool:
     fn: Any
 
 
+# The complete menu of tools the model is allowed to use. Nothing else exists for it.
 TOOLS: dict[str, Tool] = {
     t.name: t
     for t in [
@@ -198,6 +207,7 @@ TOOLS: dict[str, Tool] = {
 ALLOWED_TOOLS = frozenset(TOOLS)
 
 
+# Turns the tool list into the JSON schemas that are sent to the model each turn.
 def tool_schemas() -> list[dict[str, Any]]:
     return [
         {
@@ -212,6 +222,7 @@ def tool_schemas() -> list[dict[str, Any]]:
     ]
 
 
+# Runs a tool the model asked for, after validating its arguments.
 def dispatch(name: str, raw_args: dict[str, Any], ctx: ToolContext) -> dict[str, Any]:
     tool = TOOLS.get(name)
     if tool is None:

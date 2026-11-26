@@ -13,6 +13,7 @@ class CostLimitExceeded(Exception):
     pass
 
 
+# Per-invoice cost cap, checked at the top of every loop step.
 def check_cost(state: InvoiceState, settings: Settings) -> None:  # G6
     if state.cost_usd >= settings.max_cost_usd_per_invoice:
         raise CostLimitExceeded(f"invoice cost ${state.cost_usd:.4f} reached cap")
@@ -22,6 +23,7 @@ def run_cost_exceeded(run_cost: float, settings: Settings) -> bool:  # G7
     return run_cost >= settings.max_cost_usd_per_run
 
 
+# Used by loop.py when step/cost limits are hit: no decision was submitted, so flag it.
 def force_flag(code: str, reason: str) -> dict[str, Any]:  # G5 / G6
     return {
         "decision": "flagged",
@@ -34,6 +36,15 @@ def force_flag(code: str, reason: str) -> dict[str, Any]:  # G5 / G6
     }
 
 
+# ---------------------------------------------------------------------------
+# THE CODE CHECK: the model only *submits* a decision. This function re-checks it
+# against what the tools actually returned (InvoiceState), not what the model claims.
+# Rules only ever push toward MORE review (approved -> needs_approval/flagged).
+#   G1 approve/needs_approval requires a passing compare_to_po
+#   G2 requires check_duplicate was run and found nothing
+#   G3 approved but total above the approval limit -> needs_approval
+#   G4 invoice the model submits must equal the one that was compared
+# ---------------------------------------------------------------------------
 def apply_decision(state: InvoiceState, settings: Settings, a: SubmitDecisionArgs) -> dict[str, Any]:
     decision, codes, overridden = a.decision, list(a.finding_codes), []
     reason = a.reason
