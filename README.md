@@ -7,7 +7,7 @@ An accounts-payable clerk in code: it reads supplier invoice PDFs, matches each 
 ```bash
 npm run setup          # venv (Python 3.11+) + dependencies + .env
 # edit .env: OPENROUTER_API_KEY=...  MODEL=<any OpenRouter model with tool calling>
-npm run demo:reset     # clean workspace, seed POs, put 13 demo invoices in workspace/inbox
+npm run demo:reset     # clean workspace, seed POs, put 25 demo invoices in workspace/inbox
 npm run ui             # web UI at http://127.0.0.1:8765
 npm run agent          # in a second terminal: process the inbox with live step output
 ```
@@ -22,21 +22,21 @@ Open a new terminal, then from anywhere: `invoice-agent ui`, `invoice-agent`, `i
 
 ## npm commands
 
-| Command | What it does |
-| --- | --- |
-| `npm run agent` | Process every PDF in `inbox/` (live steps + summary table) |
-| `npm run agent -- --file path.pdf --max-cost 0.1` | One file / lower run cost cap |
-| `npm run agent:watch` | Keep polling `inbox/` |
-| `npm run ui` | Web UI (Run agent button, Watch toggle, Upload, Approve/Reject, log) |
-| `npm run status` | Folder counts, last run cost, items awaiting a human |
-| `npm run approve -- <id> [--note "..."]` | Human approves a `needs_approval` item (`<id>` = fingerprint prefix ≥6 chars or file name) |
-| `npm run reject -- <id> --reason "..."` | Human rejects it |
-| `npm run demo:reset` | Wipe `workspace/`, reseed, copy demo invoices to the inbox |
-| `npm run test` | Offline tests (scripted fake LLM, no network) |
-| `npm run eval` | Real-model eval on 13 labelled invoices, writes `eval_report.md` |
-| `npm run make:invoices` | Re-render the fixture PDFs from `tests/fixtures/cases.yaml` |
-| `npm run install:shortcut` | Adds the `invoice-agent` command to your shell so you can run the agent from any folder |
-| `npm run uninstall:shortcut` | Removes that command from your shell config |
+| Command                                           | What it does                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `npm run agent`                                   | Process every PDF in `inbox/` (live steps + summary table)                                 |
+| `npm run agent -- --file path.pdf --max-cost 0.1` | One file / lower run cost cap                                                              |
+| `npm run agent:watch`                             | Keep polling `inbox/`                                                                      |
+| `npm run ui`                                      | Web UI (Run agent button, Watch toggle, Upload, Approve/Reject, log)                       |
+| `npm run status`                                  | Folder counts, last run cost, items awaiting a human                                       |
+| `npm run approve -- <id> [--note "..."]`          | Human approves a `needs_approval` item (`<id>` = fingerprint prefix ≥6 chars or file name) |
+| `npm run reject -- <id> --reason "..."`           | Human rejects it                                                                           |
+| `npm run demo:reset`                              | Wipe `workspace/`, reseed, copy demo invoices to the inbox                                 |
+| `npm run test`                                    | Offline tests (scripted fake LLM, no network)                                              |
+| `npm run eval`                                    | Real-model eval on 25 labelled invoices, writes `eval_report.md`                           |
+| `npm run make:invoices`                           | Re-render the fixture PDFs from `tests/fixtures/cases.yaml`                                |
+| `npm run install:shortcut`                        | Adds the `invoice-agent` command to your shell so you can run the agent from any folder    |
+| `npm run uninstall:shortcut`                      | Removes that command from your shell config                                                |
 
 The same commands run without npm, e.g. `.venv/bin/python -m agent.main run`.
 
@@ -46,14 +46,14 @@ The same commands run without npm, e.g. `.venv/bin/python -m agent.main run`.
 
 ## Controls
 
-| ID | Rule |
-| --- | --- |
-| G1 | `approved`/`needs_approval` requires a passing `compare_to_po` in state, else flagged |
-| G2 | Requires `check_duplicate` run and clean, else flagged |
-| G3 | Total over the approval limit can never be `approved` (becomes `needs_approval`) |
-| G4 | The invoice submitted must equal the one compared, else flagged |
-| G5 / G6 / G7 | Step cap, per-invoice cost cap, per-run cost cap |
-| G8 | Tool allow-list and pydantic-validated arguments |
+| ID           | Rule                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------- |
+| G1           | `approved`/`needs_approval` requires a passing `compare_to_po` in state, else flagged |
+| G2           | Requires `check_duplicate` run and clean, else flagged                                |
+| G3           | Total over the approval limit can never be `approved` (becomes `needs_approval`)      |
+| G4           | The invoice submitted must equal the one compared, else flagged                       |
+| G5 / G6 / G7 | Step cap, per-invoice cost cap, per-run cost cap                                      |
+| G8           | Tool allow-list and pydantic-validated arguments                                      |
 
 Overrides are shown with a GUARDRAIL tag in the UI and in `workspace/action_log.jsonl`.
 
