@@ -59,7 +59,9 @@ class RunSummary:
     cost_limit_hit: bool = False
 
 
-def make_context(settings: Settings, llm: Any = None, log: ActionLog | None = None) -> Context:
+def make_context(
+    settings: Settings, llm: Any = None, log: ActionLog | None = None
+) -> Context:
     ws = Workspace(settings.workspace)
     conn = db.connect(ws.db_path)
     if conn.execute("SELECT count(*) FROM purchase_orders").fetchone()[0] == 0:
@@ -123,8 +125,14 @@ def process_file(ctx: Context, path: Path) -> dict[str, Any]:
     """Process one PDF from inbox/. Returns a result dict (also used for the CLI table)."""
     name, log = path.name, ctx.log
     fp = fingerprint_of(path)
-    row = ctx.conn.execute("SELECT * FROM processed_invoices WHERE fingerprint=?", (fp,)).fetchone()
-    if row and row["decision"] != "error" and row["status"] in ("done", "awaiting_human"):
+    row = ctx.conn.execute(
+        "SELECT * FROM processed_invoices WHERE fingerprint=?", (fp,)
+    ).fetchone()
+    if (
+        row
+        and row["decision"] != "error"
+        and row["status"] in ("done", "awaiting_human")
+    ):
         new = ctx.ws.safe_move(path, "flagged")
         ctx.ws.write_note(
             new,
@@ -150,7 +158,9 @@ def process_file(ctx: Context, path: Path) -> dict[str, Any]:
         }
     if row:  # previous error: retry cleanly
         with ctx.conn:
-            ctx.conn.execute("DELETE FROM processed_invoices WHERE fingerprint=?", (fp,))
+            ctx.conn.execute(
+                "DELETE FROM processed_invoices WHERE fingerprint=?", (fp,)
+            )
     log.log("invoice_started", name, fp)
     proc = ctx.ws.safe_move(path, "processing")
     _insert_row(ctx, fp, name, proc)
@@ -292,7 +302,9 @@ def run_inbox(
                 "UPDATE runs SET finished_at=?, invoices=?, cost_usd=? WHERE run_id=?",
                 (db.now_iso(), len(summary.results), summary.cost_usd, run_id),
             )
-        ctx.log.log("run_finished", invoices=len(summary.results), cost_usd=summary.cost_usd)
+        ctx.log.log(
+            "run_finished", invoices=len(summary.results), cost_usd=summary.cost_usd
+        )
         ctx.ws.release_lock()
     return summary
 
@@ -307,14 +319,21 @@ def resolve_invoice(ctx: Context, ident: str) -> sqlite3.Row:
     if not rows:
         raise NotFound(f"No invoice matches '{ident}'")
     if len(rows) > 1:
-        raise Ambiguous("Ambiguous: " + ", ".join(f"{r['file_name']} ({r['fingerprint'][:8]})" for r in rows))
+        raise Ambiguous(
+            "Ambiguous: "
+            + ", ".join(f"{r['file_name']} ({r['fingerprint'][:8]})" for r in rows)
+        )
     return rows[0]
 
 
-def apply_human_decision(ctx: Context, ident: str, approve: bool, note: str = "") -> dict[str, Any]:
+def apply_human_decision(
+    ctx: Context, ident: str, approve: bool, note: str = ""
+) -> dict[str, Any]:
     row = resolve_invoice(ctx, ident)
     if row["status"] != "awaiting_human":
-        raise NotAwaiting(f"{row['file_name']} is not awaiting a human decision (status {row['status']})")
+        raise NotAwaiting(
+            f"{row['file_name']} is not awaiting a human decision (status {row['status']})"
+        )
     decision = "approved" if approve else "rejected"
     src = ctx.ws.abs(row["current_path"])
     ctx.log.log(
@@ -326,7 +345,11 @@ def apply_human_decision(ctx: Context, ident: str, approve: bool, note: str = ""
     )
     dest = ctx.ws.move_with_note(src, decision)
     with dest.with_name(dest.name + ".note.txt").open("a", encoding="utf-8") as f:
-        f.write(f"\nHuman decision: {decision.upper()}" + (f" - {note}" if note else "") + "\n")
+        f.write(
+            f"\nHuman decision: {decision.upper()}"
+            + (f" - {note}" if note else "")
+            + "\n"
+        )
     ctx.log.log("file_moved", row["file_name"], row["fingerprint"], to=ctx.ws.rel(dest))
     reason = f"{row['reason']} | Human {decision}: {note}" if note else row["reason"]
     with ctx.conn:
